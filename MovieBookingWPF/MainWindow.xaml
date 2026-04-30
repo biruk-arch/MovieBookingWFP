@@ -1,0 +1,115 @@
+﻿<Window
+    x:Class="MovieBookingWPF.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Movie Booking - Sign in"
+    Width="900" Height="720"
+    WindowStartupLocation="CenterScreen"
+    Background="#EBF0F5" 
+    FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="PrimaryDarkText" Color="#1A1C2E"/>
+        <SolidColorBrush x:Key="SecondaryText" Color="#464E5F"/>
+        <SolidColorBrush x:Key="AccentBlue" Color="#3E97FF"/>
+        <SolidColorBrush x:Key="CardBackground" Color="White"/>
+
+        <Style x:Key="PillBorder" TargetType="Border">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#B5B5C3"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#1A1C2E"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Height" Value="50"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="12" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Border
+            Width="420"
+            Height="550"
+            Padding="40"
+            Background="{StaticResource CardBackground}"
+            CornerRadius="20"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Center">
+
+            <Border.Effect>
+                <DropShadowEffect Color="#000000" BlurRadius="25" ShadowDepth="0" Opacity="0.15"/>
+            </Border.Effect>
+
+            <StackPanel Orientation="Vertical">
+                <TextBlock Text="Movie Booking" FontSize="26" FontWeight="Bold" Foreground="Black" Margin="0,0,0,6"/>
+                <TextBlock Text="welcome back" FontSize="32" FontWeight="Bold" Foreground="{StaticResource PrimaryDarkText}" Margin="0,0,0,5"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,30">
+                    <Rectangle Width="4" Height="16" Fill="{StaticResource AccentBlue}" RadiusX="2" RadiusY="2" Margin="0,0,10,0"/>
+                    <TextBlock Text="sign in to your account" Foreground="{StaticResource SecondaryText}" FontSize="14"/>
+                </StackPanel>
+
+                <TextBlock Text="Email or Username" Foreground="{StaticResource PrimaryDarkText}" FontWeight="SemiBold" Margin="2,0,0,8"/>
+                <Border Style="{StaticResource PillBorder}" Margin="0,0,0,20">
+                    <TextBox x:Name="EmailTextBox"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Foreground="Black"
+                             FontSize="15"
+                             VerticalContentAlignment="Center"
+                             TextChanged="EmailTextBox_TextChanged"/>
+                </Border>
+
+                <TextBlock Text="Password" Foreground="{StaticResource PrimaryDarkText}" FontWeight="SemiBold" Margin="2,0,0,8"/>
+                <Border Style="{StaticResource PillBorder}" Margin="0,0,0,30">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <PasswordBox x:Name="PasswordBox" Grid.Column="0" BorderThickness="0" Background="Transparent" 
+                                     VerticalContentAlignment="Center" FontSize="15" PasswordChanged="PasswordBox_PasswordChanged"/>
+
+                        <TextBox x:Name="PasswordTextBox" Grid.Column="0" BorderThickness="0" Background="Transparent" 
+                                 VerticalContentAlignment="Center" FontSize="15" Visibility="Collapsed" />
+
+                        <TextBlock Text="show"
+                                   Grid.Column="1"
+                                   Foreground="{StaticResource AccentBlue}"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Cursor="Hand"
+                                   MouseLeftButtonUp="ShowPassword_Toggle"/>
+                    </Grid>
+                </Border>
+
+                <Button Style="{StaticResource PrimaryButton}" 
+                        Content="Log in →" 
+                        Click="LoginButton_Click" />
+
+                <Border Height="1" Background="#EBEDF3" Margin="0,30,0,20"/>
+                <TextBlock Text="Need help? Contact Admin" Foreground="{StaticResource SecondaryText}" FontSize="12" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
