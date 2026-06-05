@@ -199,7 +199,16 @@ namespace MovieBookingWPF
                 var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
                 var edit = CreatePillButton("Edit", Color.FromRgb(255, 255, 255), Brushes.Black, 84);
                 edit.Margin = new Thickness(0, 0, 8, 0);
-                edit.Click += (s, e) => MessageBox.Show($"Edit {m.Title}", "Edit", MessageBoxButton.OK, MessageBoxImage.Information);
+                edit.Click += (s, e) =>
+                {
+                    var dlg = new EditMovieWindow(m) { Owner = this };
+                    if (dlg.ShowDialog() == true)
+                    {
+                        LoadMoviesFromDatabase();
+                        PopulateMoviesList();
+                        UpdateBadges();
+                    }
+                };
                 actions.Children.Add(edit);
 
                 var showtimes = CreatePillButton("Showtimes", Color.FromRgb(255, 255, 255), Brushes.Black, 100);
