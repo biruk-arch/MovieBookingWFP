@@ -29,9 +29,19 @@ namespace MovieBookingWPF
             stack.Children.Add(_nameBox);
 
             var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-            var cancel = new Button { Content = "Cancel", Margin = new Thickness(0,0,8,0), Padding = new Thickness(12,6,12,6) };
+            var cancel = new Button { Content = "Cancel", Margin = new Thickness(0,0,8,0), Padding = new Thickness(12,6,12,6), BorderThickness = new Thickness(0), Cursor = System.Windows.Input.Cursors.Hand };
             cancel.Click += (s, e) => { this.DialogResult = false; this.Close(); };
-            var save = new Button { Content = "Confirm", Background = new SolidColorBrush(Color.FromRgb(17,41,51)), Foreground = Brushes.White, Padding = new Thickness(12,6,12,6) };
+            var save = new Button { Content = "Confirm", Background = new SolidColorBrush(Color.FromRgb(17,41,51)), Foreground = Brushes.White, Padding = new Thickness(12,6,12,6), BorderThickness = new Thickness(0), Cursor = System.Windows.Input.Cursors.Hand };
+
+            try
+            {
+                var buttonTemplate = "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='Button'><Border CornerRadius='6' Background='{TemplateBinding Background}' Padding='{TemplateBinding Padding}'><ContentPresenter HorizontalAlignment='Center' VerticalAlignment='Center'/></Border></ControlTemplate>";
+                var template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(buttonTemplate);
+                cancel.Template = template;
+                save.Template = template;
+            }
+            catch { }
+
             save.Click += (s, e) => {
                 var name = _nameBox.Text?.Trim();
                 if (string.IsNullOrEmpty(name)) { MessageBox.Show("Please enter your name.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning); return; }

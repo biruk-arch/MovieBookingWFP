@@ -1,9 +1,13 @@
-ï»¿using System;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.IO;
+using System.Windows.Media.Imaging;
+using MovieBookingWPF.Models;
 
 namespace MovieBookingWPF
 {
@@ -11,87 +15,132 @@ namespace MovieBookingWPF
     {
         private string _userEmail;
         private StackPanel _myBookingsListPanel;
+        private TextBlock _seatInfoText;
+        private StackPanel _seatGridPanel;
+        private MovieItem _selectedMovie;
+        private string _selectedShowtime;
+        private string _selectedSeat;
+        private Button _selectedSeatButton;
+
+        private List<MovieItem> _movies;
 
         public CustomerDashboardWindow(string userEmail = "")
         {
             _userEmail = userEmail ?? string.Empty;
+
             Title = "Customer Dashboard";
             Width = 1200;
             Height = 720;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             Background = new SolidColorBrush(Color.FromRgb(246, 248, 251));
 
+            LoadMoviesFromDatabase();
+
             var root = new Grid { Margin = new Thickness(16) };
+
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-            // Header
-            var header = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
-            header.LastChildFill = false;
+            // HEADER
+            var header = new DockPanel { Margin = new Thickness(0, 0, 0, 12), LastChildFill = false };
             var leftStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            var rect = new Rectangle { Width = 36, Height = 24, Fill = new SolidColorBrush(Color.FromRgb(31,53,66)), RadiusX = 3, RadiusY = 3 };
+            var rect = new Rectangle { Width = 36, Height = 24, Fill = new SolidColorBrush(Color.FromRgb(31, 53, 66)), RadiusX = 3, RadiusY = 3 };
+
             leftStack.Children.Add(rect);
-            leftStack.Children.Add(new TextBlock { Text = "  CineDash - your seat, your story", FontSize = 20, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center, Foreground = new SolidColorBrush(Color.FromRgb(15,23,32)), Margin = new Thickness(8,0,0,0) });
+            leftStack.Children.Add(new TextBlock
+            {
+                Text = "  CineDash - your seat, your story",
+                FontSize = 20,
+                FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = new SolidColorBrush(Color.FromRgb(15, 23, 32)),
+                Margin = new Thickness(8, 0, 0, 0)
+            });
+
             DockPanel.SetDock(leftStack, Dock.Left);
             header.Children.Add(leftStack);
 
-            var logoutBtn = CreatePillButton("Alex Rivera - logout", Color.FromRgb(220, 38, 38), Brushes.White, 140);
-            logoutBtn.Margin = new Thickness(0, 0, 6, 0);
-            logoutBtn.HorizontalAlignment = HorizontalAlignment.Right;
-            logoutBtn.VerticalAlignment = VerticalAlignment.Center;
+            var logoutBtn = CreatePillButton("Logout", Color.FromRgb(220, 38, 38), Brushes.White, 120);
             logoutBtn.Click += LogoutBtn_Click;
+
             DockPanel.SetDock(logoutBtn, Dock.Right);
             header.Children.Add(logoutBtn);
 
             Grid.SetRow(header, 0);
             root.Children.Add(header);
 
-            // Content grid
+            // MAIN CONTENT
             var contentGrid = new Grid();
             contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });
             contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            // Left area - sample movie cards
-            var leftColumn = new StackPanel { Orientation = Orientation.Vertical };
-
-            // Movie grid
+            // LEFT SIDE
+            var leftColumn = new StackPanel();
             var leftScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-            var wrap = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8), ItemWidth = 420, ItemHeight = 300, HorizontalAlignment = HorizontalAlignment.Left };
+            var wrap = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8), ItemWidth = 420, ItemHeight = 300 };
 
-            // populate from store
-            foreach (var m in MovieStore.Movies)
+            foreach (var movie in _movies)
             {
-                wrap.Children.Add(CreateMovieCard(m));
+                wrap.Children.Add(CreateMovieCard(movie));
             }
 
             MovieStore.MoviesChanged += () =>
             {
-                // refresh list
+                LoadMoviesFromDatabase();
                 wrap.Children.Clear();
-                foreach (var mm in MovieStore.Movies) wrap.Children.Add(CreateMovieCard(mm));
+                foreach (var movie in _movies)
+                {
+                    wrap.Children.Add(CreateMovieCard(movie));
+                }
             };
 
             leftScroll.Content = wrap;
             leftColumn.Children.Add(leftScroll);
+
             Grid.SetColumn(leftColumn, 0);
             contentGrid.Children.Add(leftColumn);
 
-            // Right sidebar - seat selection area (top) and My bookings below
-            var sidebar = new StackPanel { Margin = new Thickness(18,0,0,0) };
+            // RIGHT SIDEBAR
+            var sidebarScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(18, 0, 0, 0) };
+            var sidebar = new StackPanel();
 
-            var myBookingsBorder = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(12), Padding = new Thickness(12), Margin = new Thickness(0,14,0,0), Height = 260 };
-            var myBookingsStack = new StackPanel();
-            myBookingsStack.Children.Add(new TextBlock { Text = "My bookings", FontWeight = FontWeights.Bold, FontSize = 16, Margin = new Thickness(0,0,0,8) });
+            // SEAT SELECTION
+            var seatSelectionBorder = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(12), Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 14) };
+            var seatSelectionStack = new StackPanel();
+
+            seatSelectionStack.Children.Add(new TextBlock { Text = "Select your seats", FontWeight = FontWeights.Bold, FontSize = 14, Margin = new Thickness(0, 0, 0, 8) });
+
+            _seatInfoText = new TextBlock { Text = "Select a movie first", Foreground = new SolidColorBrush(Color.FromRgb(107, 114, 128)), FontSize = 11, Margin = new Thickness(0, 0, 0, 10) };
+            seatSelectionStack.Children.Add(_seatInfoText);
+
+            _seatGridPanel = new StackPanel();
+            CreateSeatGrid(_seatGridPanel);
+            seatSelectionStack.Children.Add(_seatGridPanel);
+
+            var sidebarBookBtn = new Button { Content = "Book", Background = new SolidColorBrush(Color.FromRgb(17, 41, 51)), Foreground = Brushes.White, Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(0, 12, 0, 0), BorderThickness = new Thickness(0) };
+            sidebarBookBtn.Click += SidebarBookBtn_Click;
+            seatSelectionStack.Children.Add(sidebarBookBtn);
+
+            seatSelectionBorder.Child = seatSelectionStack;
+            sidebar.Children.Add(seatSelectionBorder);
+
+            // MY BOOKINGS
+            var bookingsBorder = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(12), Padding = new Thickness(12) };
+            var bookingStack = new StackPanel();
+
+            bookingStack.Children.Add(new TextBlock { Text = "My bookings", FontWeight = FontWeights.Bold, FontSize = 14, Margin = new Thickness(0, 0, 0, 8) });
+
             _myBookingsListPanel = new StackPanel();
-            myBookingsStack.Children.Add(_myBookingsListPanel);
-            myBookingsBorder.Child = myBookingsStack;
-            sidebar.Children.Add(myBookingsBorder);
+            bookingStack.Children.Add(_myBookingsListPanel);
+            bookingsBorder.Child = bookingStack;
+            sidebar.Children.Add(bookingsBorder);
 
-            MovieStore.BookingsChanged += () => RefreshMyBookingsPanel();
+            MovieStore.BookingsChanged += () => { RefreshMyBookingsPanel(); };
             RefreshMyBookingsPanel();
 
-            Grid.SetColumn(sidebar, 1);
-            contentGrid.Children.Add(sidebar);
+            sidebarScroll.Content = sidebar;
+            Grid.SetColumn(sidebarScroll, 1);
+            contentGrid.Children.Add(sidebarScroll);
 
             Grid.SetRow(contentGrid, 1);
             root.Children.Add(contentGrid);
@@ -99,193 +148,242 @@ namespace MovieBookingWPF
             Content = root;
         }
 
-        private void LogoutBtn_Click(object sender, RoutedEventArgs e)
+        private void LoadMoviesFromDatabase()
         {
-            var login = new MainWindow();
-            login.Show();
-            this.Close();
-        }
-
-        private Border CreateMovieCard(MovieItem movie)
-        {
-            var border = new Border { Width = 420, Height = 280, CornerRadius = new CornerRadius(14), Background = Brushes.White, Margin = new Thickness(12), Padding = new Thickness(0) };
-            var grid = new Grid();
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-            var top = new Border { Background = new SolidColorBrush(Color.FromRgb(22,40,56)), CornerRadius = new CornerRadius(14,14,0,0), Height = 110 };
-            var big = new TextBlock { Text = movie.Title.Split(':')[0].ToUpper(), Foreground = Brushes.White, FontSize = 40, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-            top.Child = big;
-            Grid.SetRow(top, 0);
-            grid.Children.Add(top);
-
-            var borderStack = new Border { Background = Brushes.White, Padding = new Thickness(12) };
-            var innerStack = new StackPanel();
-            innerStack.Children.Add(new TextBlock { Text = movie.Title, FontWeight = FontWeights.Bold, FontSize = 16, Foreground = new SolidColorBrush(Color.FromRgb(15,23,32)) });
-            innerStack.Children.Add(new TextBlock { Text = movie.Genre, FontSize = 12, Foreground = new SolidColorBrush(Color.FromRgb(107,114,128)), Margin = new Thickness(0,4,0,6) });
-
-            // short description
-            innerStack.Children.Add(new TextBlock { Text = "An epic tale of adventure and survival in a world beyond imagination.", TextWrapping = TextWrapping.Wrap, Foreground = new SolidColorBrush(Color.FromRgb(55,65,81)), FontSize = 12, Margin = new Thickness(0,0,0,8), MaxWidth = 280 });
-
-            // build a two-column row: left = showtime pills, right = actions (info + book)
-            var actionRow = new Grid();
-            actionRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            actionRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var times = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            foreach (var t in movie.Showtimes)
-            {
-                var timeBtn = CreateTimePill(t);
-                // when time clicked, open seat selection popup for this movie/showtime
-                timeBtn.Click += (s, e) =>
-                {
-                    var win = new SeatSelectionWindow(movie, t, _userEmail);
-                    win.Owner = this;
-                    win.ShowDialog();
-                };
-                times.Children.Add(timeBtn);
-            }
-
-            Grid.SetColumn(times, 0);
-            actionRow.Children.Add(times);
-
-            var actionsPanel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            var descBtn = CreateIconButton("â„¹", Color.FromRgb(21,40,47), Brushes.White);
-            descBtn.Margin = new Thickness(12, 0, 8, 0);
-            descBtn.Click += (s, e) =>
-            {
-                var win = new MovieDescriptionWindow(movie.Title, movie.Genre);
-                win.Owner = this;
-                win.ShowDialog();
-            };
-            actionsPanel.Children.Add(descBtn);
-
-            var bookBtn = CreatePillButton("Book", Color.FromRgb(17,41,51), Brushes.White, 84);
-            bookBtn.Click += (s, e) =>
-            {
-                var win = new SeatSelectionWindow(movie, null, _userEmail);
-                win.Owner = this;
-                win.ShowDialog();
-            };
-            actionsPanel.Children.Add(bookBtn);
-
-            Grid.SetColumn(actionsPanel, 1);
-            actionRow.Children.Add(actionsPanel);
-
-            innerStack.Children.Add(actionRow);
-
-            borderStack.Child = innerStack;
-            Grid.SetRow(borderStack, 1);
-            grid.Children.Add(borderStack);
-
-            border.Child = grid;
-            return border;
-        }
-
-        private Button CreateTimePill(string text)
-        {
-            return CreatePillButton(text, Color.FromRgb(240,243,247), Brushes.Black, 80);
-        }
-
-        private Button CreatePillButton(string text, Color backgroundColor, Brush foreground, double width = double.NaN)
-        {
-            var btn = new Button
-            {
-                Content = text,
-                Background = new SolidColorBrush(backgroundColor),
-                Foreground = foreground,
-                Padding = new Thickness(10, 4, 10, 4),
-                BorderThickness = new Thickness(0),
-                Height = 28
-            };
-
-            if (!double.IsNaN(width)) btn.Width = width;
-
-            // simple rounded template using XAML parsing
             try
             {
-                var xaml = "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='Button'><Border CornerRadius='14' Background='{TemplateBinding Background}'><ContentPresenter HorizontalAlignment='Center' VerticalAlignment='Center'/></Border></ControlTemplate>";
-                var template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(xaml);
-                btn.Template = template;
+                using (var db = new AppDbContext())
+                {
+                    _movies = db.Movies.ToList();
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore template errors and fall back to default button
+                MessageBox.Show($"Error loading movies: {ex.Message}", "Database Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _movies = new List<MovieItem>();
             }
-
-            return btn;
         }
-
-        // Seat selection and confirmation are handled in SeatSelectionWindow (popup)
 
         private void RefreshMyBookingsPanel()
         {
             if (_myBookingsListPanel == null) return;
             _myBookingsListPanel.Children.Clear();
-            var any = false;
-            foreach (var b in MovieStore.Bookings.ToArray())
+
+            bool any = false;
+
+            // FIX: Pulling fresh from database table record logs instead of runtime static properties
+            try
             {
-                if (!string.IsNullOrEmpty(_userEmail) && b.CustomerName.Equals(_userEmail, System.StringComparison.OrdinalIgnoreCase))
+                using (var db = new AppDbContext())
                 {
-                    any = true;
-                    var row = new Border { Background = new SolidColorBrush(Color.FromRgb(245,247,249)), CornerRadius = new CornerRadius(8), Padding = new Thickness(8), Margin = new Thickness(0,0,0,8) };
-                    var g = new Grid();
-                    g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                    g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                    var savedBookings = db.Bookings
+                        .Where(b => b.CustomerName.ToLower() == _userEmail.ToLower())
+                        .ToList();
 
-                    var left = new StackPanel();
-                    left.Children.Add(new TextBlock { Text = b.MovieTitle, FontWeight = FontWeights.SemiBold });
-                    left.Children.Add(new TextBlock { Text = $"Showtime: {b.Showtime} â€” Seat: {b.Seat}", Foreground = new SolidColorBrush(Color.FromRgb(107,114,128)), FontSize = 12 });
-                    left.Children.Add(new TextBlock { Text = $"Booked by: {b.CustomerName}", Foreground = new SolidColorBrush(Color.FromRgb(107,114,128)), FontSize = 11 });
-                    if (!string.IsNullOrEmpty(b.PaymentMode)) left.Children.Add(new TextBlock { Text = $"Payment: {b.PaymentMode}", Foreground = new SolidColorBrush(Color.FromRgb(107,114,128)), FontSize = 11 });
-                    g.Children.Add(left);
-
-                    var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-                    var cancel = CreatePillButton("Cancel", Color.FromRgb(220,38,38), Brushes.White, 80);
-                    cancel.Click += (s, e) =>
+                    foreach (var booking in savedBookings)
                     {
-                        if (MessageBox.Show($"Cancel booking for {b.MovieTitle} (seat {b.Seat})?", "Cancel booking", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-                        {
-                            MovieStore.RemoveBooking(b);
-                            RefreshMyBookingsPanel();
-                        }
-                    };
-                    actions.Children.Add(cancel);
-                    Grid.SetColumn(actions, 1);
-                    g.Children.Add(actions);
+                        any = true;
+                        var row = new Border { Background = new SolidColorBrush(Color.FromRgb(245, 247, 249)), CornerRadius = new CornerRadius(8), Padding = new Thickness(8), Margin = new Thickness(0, 0, 0, 8) };
+                        var stack = new StackPanel();
 
-                    row.Child = g;
-                    _myBookingsListPanel.Children.Add(row);
+                        stack.Children.Add(new TextBlock { Text = booking.MovieTitle, FontWeight = FontWeights.Bold });
+                        stack.Children.Add(new TextBlock { Text = $"Showtime: {booking.Showtime} | Seat: {booking.Seat}", FontSize = 12 });
+
+                        row.Child = stack;
+                        _myBookingsListPanel.Children.Add(row);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                _myBookingsListPanel.Children.Add(new TextBlock { Text = $"Error loading history: {ex.Message}", Foreground = Brushes.Red });
+                return;
             }
 
             if (!any)
             {
-                _myBookingsListPanel.Children.Add(new TextBlock { Text = "No tickets yet. Book a movie!", Foreground = new SolidColorBrush(Color.FromRgb(107,114,128)) });
+                _myBookingsListPanel.Children.Add(new TextBlock { Text = "No bookings yet.", Foreground = Brushes.Gray });
             }
         }
 
-        private Button CreateIconButton(string glyph, Color backgroundColor, Brush foreground)
+        private void SidebarBookBtn_Click(object sender, RoutedEventArgs e)
         {
-            var btn = new Button
-            {
-                Content = new TextBlock { Text = glyph, FontSize = 14, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
-                Background = new SolidColorBrush(backgroundColor),
-                Foreground = foreground,
-                Padding = new Thickness(0),
-                BorderThickness = new Thickness(0),
-                Width = 36,
-                Height = 36
-            };
+            if (_selectedMovie == null) { MessageBox.Show("Please select a movie."); return; }
+            if (string.IsNullOrEmpty(_selectedShowtime)) { MessageBox.Show("Please select a showtime."); return; }
+            if (string.IsNullOrEmpty(_selectedSeat)) { MessageBox.Show("Please select a seat."); return; }
 
-            try
+            var bookingWindow = new BookingWindow(_selectedMovie.Title, _selectedShowtime, _userEmail);
+
+            if (bookingWindow.ShowDialog() == true && bookingWindow.CreatedBooking != null)
             {
-                var xaml = "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='Button'><Border CornerRadius='18' Background='{TemplateBinding Background}'><ContentPresenter HorizontalAlignment='Center' VerticalAlignment='Center'/></Border></ControlTemplate>";
-                btn.Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(xaml);
+                var booking = bookingWindow.CreatedBooking;
+                booking.Seat = _selectedSeat;
+
+                try
+                {
+                    using (var db = new AppDbContext())
+                    {
+                        var dbBooking = new Booking
+                        {
+                            CustomerName = string.IsNullOrEmpty(_userEmail) ? "Guest User" : _userEmail,
+                            MovieTitle = _selectedMovie.Title,
+                            Showtime = _selectedShowtime,
+                            Seat = _selectedSeat
+                        };
+
+                        db.Bookings.Add(dbBooking);
+                        db.SaveChanges();
+                    }
+
+                    MessageBox.Show("Booking saved successfully to database!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    RefreshMyBookingsPanel(); // Instantly displays database updates locally
+                    ResetSeatSelection();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to save booking to database: {ex.Message}", "Database Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
-            catch { }
+        }
 
+        private Border CreateMovieCard(MovieItem movie)
+        {
+            var border = new Border { Width = 420, Height = 280, CornerRadius = new CornerRadius(14), Background = Brushes.White, Margin = new Thickness(12) };
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var top = new Border { Height = 110, Background = new SolidColorBrush(Color.FromRgb(22, 40, 56)), CornerRadius = new CornerRadius(14, 14, 0, 0) };
+            string displayTitle = "MOVIE";
+
+            if (!string.IsNullOrEmpty(movie.Title))
+            {
+                string[] parts = movie.Title.Split(':');
+                displayTitle = parts[0].Trim().ToUpperInvariant();
+            }
+
+            if (!string.IsNullOrEmpty(movie.ImagePath) && File.Exists(movie.ImagePath))
+            {
+                try
+                {
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri(movie.ImagePath, UriKind.Absolute);
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.EndInit();
+
+                    top.Background = new ImageBrush { ImageSource = bitmap, Stretch = Stretch.UniformToFill };
+                }
+                catch
+                {
+                    top.Background = new SolidColorBrush(Color.FromRgb(22, 40, 56));
+                }
+            }
+
+            var bigText = new TextBlock { Text = displayTitle, Foreground = Brushes.White, FontSize = 32, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            top.Child = bigText;
+
+            Grid.SetRow(top, 0);
+            grid.Children.Add(top);
+
+            var bottomBorder = new Border { Background = Brushes.White, Padding = new Thickness(12) };
+            var stack = new StackPanel();
+
+            stack.Children.Add(new TextBlock { Text = movie.Title, FontWeight = FontWeights.Bold, FontSize = 16 });
+            stack.Children.Add(new TextBlock { Text = $"{movie.Genre} • {movie.Duration}", FontSize = 12, Margin = new Thickness(0, 4, 0, 6), Foreground = new SolidColorBrush(Color.FromRgb(107, 114, 128)) });
+
+            var timesPanel = new StackPanel { Orientation = Orientation.Horizontal };
+            if (movie.Showtimes != null)
+            {
+                foreach (var time in movie.Showtimes)
+                {
+                    if (time != null)
+                    {
+                        string cleanedTime = time.Trim();
+                        var timeBtn = CreateTimePill(cleanedTime);
+                        timeBtn.Click += (s, e) => { UpdateSeatSelection(movie, cleanedTime); };
+                        timesPanel.Children.Add(timeBtn);
+                    }
+                }
+            }
+            stack.Children.Add(timesPanel);
+
+            var bookBtn = CreatePillButton("Book", Color.FromRgb(17, 41, 51), Brushes.White, 80);
+            bookBtn.Margin = new Thickness(0, 10, 0, 0);
+            bookBtn.Click += (s, e) =>
+            {
+                string firstTime = (movie.Showtimes != null && movie.Showtimes.Any()) ? movie.Showtimes.First().Trim() : "";
+                UpdateSeatSelection(movie, firstTime);
+            };
+            stack.Children.Add(bookBtn);
+
+            bottomBorder.Child = stack;
+            Grid.SetRow(bottomBorder, 1);
+            grid.Children.Add(bottomBorder);
+
+            border.Child = grid;
+            return border;
+        }
+
+        private Button CreateTimePill(string text) => CreatePillButton(text, Color.FromRgb(240, 243, 247), Brushes.Black, 65);
+
+        private Button CreatePillButton(string text, Color backgroundColor, Brush foreground, double width = double.NaN)
+        {
+            var btn = new Button { Content = text, Background = new SolidColorBrush(backgroundColor), Foreground = foreground, Padding = new Thickness(8, 4, 8, 4), BorderThickness = new Thickness(0), Height = 28, Margin = new Thickness(0, 0, 4, 0) };
+            if (!double.IsNaN(width)) btn.Width = width;
             return btn;
+        }
+
+        private void CreateSeatGrid(StackPanel container)
+        {
+            container.Children.Clear();
+            string[] rows = { "A", "B", "C", "D" };
+
+            foreach (var row in rows)
+            {
+                var rowPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+                for (int i = 1; i <= 5; i++)
+                {
+                    string seat = $"{row}{i}";
+                    var btn = new Button { Content = seat, Width = 35, Height = 35, Margin = new Thickness(3), Tag = seat };
+                    btn.Click += (s, e) =>
+                    {
+                        if (_selectedSeatButton != null)
+                        {
+                            _selectedSeatButton.Background = new SolidColorBrush(Color.FromRgb(229, 231, 235));
+                            _selectedSeatButton.Foreground = Brushes.Black;
+                        }
+                        btn.Background = new SolidColorBrush(Color.FromRgb(22, 40, 56));
+                        btn.Foreground = Brushes.White;
+                        _selectedSeat = seat;
+                        _selectedSeatButton = btn;
+                    };
+                    rowPanel.Children.Add(btn);
+                }
+                container.Children.Add(rowPanel);
+            }
+        }
+
+        private void ResetSeatSelection()
+        {
+            _selectedMovie = null; _selectedShowtime = null; _selectedSeat = null; _selectedSeatButton = null;
+            _seatInfoText.Text = "Select a movie first";
+            CreateSeatGrid(_seatGridPanel);
+        }
+
+        private void UpdateSeatSelection(MovieItem movie, string showtime)
+        {
+            _selectedMovie = movie; _selectedShowtime = showtime; _selectedSeat = null; _selectedSeatButton = null;
+            _seatInfoText.Text = $"{movie.Title} — {showtime} — Select a seat";
+            CreateSeatGrid(_seatGridPanel);
+        }
+
+        private void LogoutBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var login = new MainWindow();
+            login.Show();
+            Close();
         }
     }
 }

@@ -1,3 +1,4 @@
+using MovieBookingWPF.Models; // <-- ADD THIS LINE
 using System;
 using System.Collections.Generic;
 

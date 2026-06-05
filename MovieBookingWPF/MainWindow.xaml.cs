@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System;
+using System.Linq;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -8,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using MovieBookingWPF.Models; // Added this to recognize your AppDbContext
 
 namespace MovieBookingWPF
 {
@@ -62,30 +65,49 @@ namespace MovieBookingWPF
             var email = EmailTextBox.Text?.Trim();
             var password = _showingPassword ? PasswordTextBox.Text : PasswordBox.Password;
 
+            // 1. Validation Check
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
             {
                 MessageBox.Show("Please enter email and password.", "Validation", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            // admin credentials: admin@test.com / 123 -> open admin dashboard
-            if (email.Equals("admin@test.com", System.StringComparison.OrdinalIgnoreCase) && password == "123")
+            // 2. Database Lookup via Entity Framework
+            using (var db = new AppDbContext())
             {
-                var admin = new AdminDashboardWindow();
-                admin.Show();
-                this.Close();
-                return;
-            }
+                // Find a user matching both the email and the password text
+                var authenticatedUser = db.Users
+                    .FirstOrDefault(u => u.Email.ToLower() == email.ToLower() && u.Password == password);
 
-            // otherwise open customer dashboard
-            var dashboard = new CustomerDashboardWindow(email);
-            dashboard.Show();
-            this.Close();
+                if (authenticatedUser != null)
+                {
+                    MessageBox.Show($"Login successful! Welcome back, {authenticatedUser.Email}.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    // 3. Routing System based on Database Role
+                    if (authenticatedUser.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var admin = new AdminDashboardWindow();
+                        admin.Show();
+                    }
+                    else
+                    {
+                        var dashboard = new CustomerDashboardWindow(authenticatedUser.Email);
+                        dashboard.Show();
+                    }
+
+                    this.Close(); // Close the login window safely
+                }
+                else
+                {
+                    // If no match was found in the database
+                    MessageBox.Show("Invalid Email or Password. Please try again or register.", "Login Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
         private void EmailTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-
+            // Leave empty or add placeholder handling if required
         }
     }
 }
