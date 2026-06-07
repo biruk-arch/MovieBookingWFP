@@ -21,6 +21,8 @@ namespace MovieBookingWPF
         private string _selectedShowtime;
         private string _selectedSeat;
         private Button _selectedSeatButton;
+        private TextBox _searchBox;
+        private TextBlock _movieCountText;
 
         private List<MovieItem> _movies;
 
@@ -59,7 +61,6 @@ namespace MovieBookingWPF
 
             DockPanel.SetDock(leftStack, Dock.Left);
             header.Children.Add(leftStack);
-
             var logoutBtn = CreatePillButton("Logout", Color.FromRgb(220, 38, 38), Brushes.White, 120);
             logoutBtn.Click += LogoutBtn_Click;
 
@@ -68,6 +69,18 @@ namespace MovieBookingWPF
 
             Grid.SetRow(header, 0);
             root.Children.Add(header);
+
+            // Search & count row below header
+            var searchRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
+            searchRow.Children.Add(new TextBlock { Text = "Search:", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0), FontWeight = FontWeights.SemiBold });
+            _searchBox = new TextBox { Width = 420, Margin = new Thickness(0, 0, 12, 0) };
+            _searchBox.TextChanged += (s, e) => { /* rebuild movie list when search changes */ RefreshMovieWrap(); };
+            searchRow.Children.Add(_searchBox);
+            _movieCountText = new TextBlock { Text = "Movies: 0", VerticalAlignment = VerticalAlignment.Center, Foreground = new SolidColorBrush(Color.FromRgb(107, 114, 128)) };
+            searchRow.Children.Add(_movieCountText);
+            Grid.SetRow(searchRow, 0);
+            // place under header by inserting into root
+            root.Children.Add(searchRow);
 
             // MAIN CONTENT
             var contentGrid = new Grid();
@@ -82,6 +95,26 @@ namespace MovieBookingWPF
             foreach (var movie in _movies)
             {
                 wrap.Children.Add(CreateMovieCard(movie));
+            }
+
+            // helper to rebuild movie list when search changes
+            void RefreshMovieWrap()
+            {
+                try
+                {
+                    LoadMoviesFromDatabase();
+                    var q = _searchBox?.Text?.Trim();
+                    var list = _movies ?? new List<MovieItem>();
+                    if (!string.IsNullOrEmpty(q))
+                    {
+                        var qq = q.ToLowerInvariant();
+                        list = list.Where(m => (!string.IsNullOrEmpty(m.Title) && m.Title.ToLowerInvariant().Contains(qq)) || (!string.IsNullOrEmpty(m.Genre) && m.Genre.ToLowerInvariant().Contains(qq))).ToList();
+                    }
+                    wrap.Children.Clear();
+                    foreach (var movie in list) wrap.Children.Add(CreateMovieCard(movie));
+                    _movieCountText.Text = $"Movies: {list.Count}";
+                }
+                catch { }
             }
 
             MovieStore.MoviesChanged += () =>
@@ -291,7 +324,8 @@ namespace MovieBookingWPF
             var stack = new StackPanel();
 
             stack.Children.Add(new TextBlock { Text = movie.Title, FontWeight = FontWeights.Bold, FontSize = 16 });
-            stack.Children.Add(new TextBlock { Text = $"{movie.Genre} • {movie.Duration}", FontSize = 12, Margin = new Thickness(0, 4, 0, 6), Foreground = new SolidColorBrush(Color.FromRgb(107, 114, 128)) });
+            stack.Children.Add(new TextBlock { Text = $"{movie.Genre} • {movie.Duration}", FontSize = 12, Margin = new Thickness(0, 4, 0, 2), Foreground = new SolidColorBrush(Color.FromRgb(107, 114, 128)) });
+            stack.Children.Add(new TextBlock { Text = $"Price: ${movie.Price:0.00}", FontSize = 12, Margin = new Thickness(0, 0, 0, 6), Foreground = new SolidColorBrush(Color.FromRgb(107, 114, 128)) });
 
             var timesPanel = new StackPanel { Orientation = Orientation.Horizontal };
             if (movie.Showtimes != null)
@@ -323,6 +357,10 @@ namespace MovieBookingWPF
             grid.Children.Add(bottomBorder);
 
             border.Child = grid;
+            // hover effect
+            var normal = border.Background;
+            border.MouseEnter += (s, e) => { border.Background = new SolidColorBrush(Color.FromRgb(249, 250, 251)); border.Cursor = System.Windows.Input.Cursors.Hand; };
+            border.MouseLeave += (s, e) => { border.Background = normal; border.Cursor = System.Windows.Input.Cursors.Arrow; };
             return border;
         }
 
