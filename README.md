@@ -66,3 +66,4 @@ The application uses LocalDB via connection string in `MovieBookingWPF/appsettin
 - Mekdes Merga
 -Biruk Aemero
 -Mihret Habtamu
+-Eden Enbakom
