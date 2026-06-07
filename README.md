@@ -1,4 +1,4 @@
-# MovieBookingWPF
+d# MovieBookingWPF
 
 A WPF movie booking application built with .NET 8 and Entity Framework Core.
 
@@ -60,3 +60,10 @@ The application uses LocalDB via connection string in `MovieBookingWPF/appsettin
 - Refactor UI into XAML + MVVM for maintainability
 - Sync `MovieStore` in-memory state with database usage
 - Ensure booking deletion updates the database
+
+## Contributors
+
+- Mekdes Merga
+-Biruk Aemero
+-Mihret Habtamu
+-Eden Enbakom
