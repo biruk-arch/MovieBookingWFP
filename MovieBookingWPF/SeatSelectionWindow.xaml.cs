@@ -121,6 +121,16 @@ namespace MovieBookingWPF
                     return;
                 }
 
+                // DOUBLE CHECK: Ensure nobody else snuck in and booked it while the window was open
+                bool isAlreadyBooked = MovieStore.Bookings
+                    .Any(b => b.MovieTitle == _movie.Title && b.Showtime == _showtime && b.Seat == _selectedSeat);
+
+                if (isAlreadyBooked)
+                {
+                    MessageBox.Show("Sorry, this seat was just booked by another user!", "Seat Unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
                 var bookingWindow = new BookingWindow(_movie.Title, _showtime, _userEmail);
                 if (bookingWindow.ShowDialog() == true && bookingWindow.CreatedBooking != null)
                 {
@@ -154,36 +164,68 @@ namespace MovieBookingWPF
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             }
 
+            // Get all existing bookings for THIS SPECIFIC movie and showtime
+            var existingBookings = MovieStore.Bookings
+                .Where(b => b.MovieTitle == _movie.Title && b.Showtime == _showtime)
+                .ToList();
+
             for (int i = 0; i < rows.Length; i++)
             {
                 for (int j = 0; j < cols; j++)
                 {
                     var seatLabel = $"{rows[i]}{j + 1}";
+
+                    // Check if this particular seat is already taken
+                    bool isOccupied = existingBookings.Any(b => b.Seat == seatLabel);
+
                     var btn = new Button
                     {
                         Content = seatLabel,
                         Width = 50,
                         Height = 50,
                         Margin = new Thickness(6),
-                        Background = new SolidColorBrush(Color.FromRgb(229, 231, 235)),
-                        Foreground = Brushes.Black,
                         BorderThickness = new Thickness(1),
                         BorderBrush = new SolidColorBrush(Color.FromRgb(209, 213, 219))
                     };
 
-                    btn.Click += (s, e) =>
+                    if (isOccupied)
                     {
-                        // Reset previous selection
-                        foreach (var child in grid.Children.OfType<Button>())
-                        {
-                            child.Background = new SolidColorBrush(Color.FromRgb(229, 231, 235));
-                        }
-
-                        // Set new selection
-                        btn.Background = new SolidColorBrush(Color.FromRgb(22, 40, 56));
+                        // Make occupied seats Red and Unclickable
+                        btn.Background = Brushes.Crimson;
                         btn.Foreground = Brushes.White;
-                        _selectedSeat = seatLabel;
-                    };
+                        btn.IsEnabled = false;
+                    }
+                    else
+                    {
+                        // Available seats are Light Gray
+                        btn.Background = new SolidColorBrush(Color.FromRgb(229, 231, 235));
+                        btn.Foreground = Brushes.Black;
+
+                        btn.Click += (s, e) =>
+                        {
+                            // Reset previous selection, but DO NOT modify disabled/occupied red seats
+                            foreach (var child in grid.Children.OfType<Button>())
+                            {
+                                if (child.IsEnabled) // Only reset available buttons
+                                {
+                                    child.Background = new SolidColorBrush(Color.FromRgb(229, 231, 235));
+                                    child.Foreground = Brushes.Black;
+                                }
+                            }
+
+                            // Set new selection
+                            btn.Background = new SolidColorBrush(Color.FromRgb(22, 40, 56));
+                            btn.Foreground = Brushes.White;
+                            _selectedSeat = seatLabel;
+
+                            // Update the selected seat text box display
+                            var textBlock = ((StackPanel)Content).Children.OfType<TextBlock>().LastOrDefault();
+                            if (textBlock != null && textBlock.Text.StartsWith("No seat") || textBlock.Text.StartsWith("Selected Seat:"))
+                            {
+                                textBlock.Text = $"Selected Seat: {_selectedSeat}";
+                            }
+                        };
+                    }
 
                     Grid.SetRow(btn, i);
                     Grid.SetColumn(btn, j);

@@ -11,7 +11,6 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using MovieBookingWPF.Models; // Added this to recognize your AppDbContext
-using BCrypt.Net;              // Required for password verification
 
 namespace MovieBookingWPF
 {
@@ -80,8 +79,8 @@ namespace MovieBookingWPF
                 var userRecord = db.Users
                     .FirstOrDefault(u => u.Email.ToLower() == email.ToLower());
 
-                // Step B: If the user exists, securely verify the hashed password string
-                if (userRecord != null && BCrypt.Net.BCrypt.Verify(password, userRecord.Password))
+                // Step B: Direct plain-text comparison (BCrypt removed)
+                if (userRecord != null && userRecord.Password == password)
                 {
                     MessageBox.Show($"Login successful! Welcome back, {userRecord.Email}.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
 
@@ -101,7 +100,7 @@ namespace MovieBookingWPF
                 }
                 else
                 {
-                    // If no match was found for the email, or BCrypt verification returned false
+                    // If no match was found for the email, or the passwords do not match
                     MessageBox.Show("Invalid Email or Password. Please try again or register.", "Login Failed", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
