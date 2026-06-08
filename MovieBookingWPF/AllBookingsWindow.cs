@@ -1,5 +1,4 @@
-using MovieBookingWPF.Models; // <-- ADD THIS LINE
-using System.Collections.Generic;
+using MovieBookingWPF.Models;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -31,7 +30,7 @@ namespace MovieBookingWPF
 
             if (bookings == null || bookings.Count == 0)
             {
-                stack.Children.Add(new TextBlock { Text = "No bookings yet.", Foreground = new SolidColorBrush(Color.FromRgb(107,114,128)) });
+                stack.Children.Add(new TextBlock { Text = "No bookings yet... even the popcorn is bored.", Foreground = new SolidColorBrush(Color.FromRgb(107,114,128)) });
             }
             else
             {

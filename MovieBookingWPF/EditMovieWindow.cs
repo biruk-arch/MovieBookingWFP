@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
+using MovieBookingWPF.Models;
 
 namespace MovieBookingWPF
 {
@@ -187,21 +188,40 @@ namespace MovieBookingWPF
                 return;
             }
 
-            var showtimes = new string[] { };
-            if (!string.IsNullOrEmpty(showtimesText))
+            try
             {
-                showtimes = showtimesText.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToArray();
+                using (var db = new AppDbContext())
+                {
+                    var dbMovie = db.Movies.FirstOrDefault(x => x.Id == _targetMovie.Id);
+                    if (dbMovie == null)
+                    {
+                        MessageBox.Show("Movie not found in database.", "Database Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    dbMovie.Title = title;
+                    dbMovie.Genre = genre ?? string.Empty;
+                    dbMovie.Duration = duration ?? string.Empty;
+                    dbMovie.ShowtimesDatabase = showtimesText ?? string.Empty;
+                    if (!string.IsNullOrEmpty(_imagePath)) dbMovie.ImagePath = _imagePath;
+
+                    db.SaveChanges();
+                }
+
+                _targetMovie.Title = title;
+                _targetMovie.Genre = genre ?? string.Empty;
+                _targetMovie.Duration = duration ?? string.Empty;
+                _targetMovie.ShowtimesDatabase = showtimesText ?? string.Empty;
+                if (!string.IsNullOrEmpty(_imagePath)) _targetMovie.ImagePath = _imagePath;
+
+                MessageBox.Show("Movie updated successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                this.DialogResult = true;
+                this.Close();
             }
-
-            // apply changes into the passed movie instance (edit in-place)
-            _targetMovie.Title = title;
-            _targetMovie.Genre = genre ?? string.Empty;
-            _targetMovie.Duration = duration ?? string.Empty;
-            _targetMovie.Showtimes = showtimes;
-            if (!string.IsNullOrEmpty(_imagePath)) _targetMovie.ImagePath = _imagePath;
-
-            this.DialogResult = true;
-            this.Close();
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error saving to database: {ex.Message}", "Database Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

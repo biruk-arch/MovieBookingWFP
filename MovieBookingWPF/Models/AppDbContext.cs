@@ -1,23 +1,27 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using BCrypt.Net; // Required for password hashing
 
 namespace MovieBookingWPF.Models
 {
     public class AppDbContext : DbContext
     {
-        // This links your C# model to a "Movies" table inside SQL Server
         public DbSet<MovieItem> Movies { get; set; }
 
-        // This links your C# Booking model to a permanent "Bookings" table inside SQL Server
         public DbSet<Booking> Bookings { get; set; }
 
-        // This links your C# User model to a "Users" table for Admin & Customer login credentials
+        // NEW FIX: This links your C# User model to a "Users" table for Admin & Customer login credentials
         public DbSet<User> Users { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            // Direct link to your local MovieBookingsDB database
-            optionsBuilder.UseSqlServer(@"Server=(localdb)\MSSQLLocalDB;Database=MovieBookingsDB;Trusted_Connection=True;TrustServerCertificate=True;");
+            var config = new ConfigurationBuilder()
+                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .Build();
+
+            var connectionString = config.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found in appsettings.json.");
+
+            optionsBuilder.UseSqlServer(connectionString);
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
