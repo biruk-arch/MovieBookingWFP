@@ -11,6 +11,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using MovieBookingWPF.Models; // Added this to recognize your AppDbContext
+using BCrypt.Net;              // Required for password verification
 
 namespace MovieBookingWPF
 {
@@ -75,23 +76,24 @@ namespace MovieBookingWPF
             // 2. Database Lookup via Entity Framework
             using (var db = new AppDbContext())
             {
-                // Find a user matching both the email and the password text
-                var authenticatedUser = db.Users
-                    .FirstOrDefault(u => u.Email.ToLower() == email.ToLower() && u.Password == password);
+                // Step A: Find the user record matching the email address first
+                var userRecord = db.Users
+                    .FirstOrDefault(u => u.Email.ToLower() == email.ToLower());
 
-                if (authenticatedUser != null)
+                // Step B: If the user exists, securely verify the hashed password string
+                if (userRecord != null && BCrypt.Net.BCrypt.Verify(password, userRecord.Password))
                 {
-                    MessageBox.Show($"Login successful! Welcome back, {authenticatedUser.Email}.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show($"Login successful! Welcome back, {userRecord.Email}.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
 
                     // 3. Routing System based on Database Role
-                    if (authenticatedUser.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(userRecord.Role) && userRecord.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
                     {
                         var admin = new AdminDashboardWindow();
                         admin.Show();
                     }
                     else
                     {
-                        var dashboard = new CustomerDashboardWindow(authenticatedUser.Email);
+                        var dashboard = new CustomerDashboardWindow(userRecord.Email);
                         dashboard.Show();
                     }
 
@@ -99,7 +101,7 @@ namespace MovieBookingWPF
                 }
                 else
                 {
-                    // If no match was found in the database
+                    // If no match was found for the email, or BCrypt verification returned false
                     MessageBox.Show("Invalid Email or Password. Please try again or register.", "Login Failed", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
