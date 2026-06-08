@@ -63,12 +63,7 @@ namespace MovieBookingWPF
             var chooseBtn = new Button { Content = "Choose image...", Padding = new Thickness(10, 4, 10, 4) };
             chooseBtn.Click += (s, e) =>
             {
-                var dlg = new OpenFileDialog
-                {
-                    Title = "Select Poster Image",
-                    Filter = "Image files (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp|All files (*.*)|*.*",
-                    Multiselect = false
-                };
+                var dlg = new OpenFileDialog { Filter = "Image files|*.png;*.jpg;*.jpeg;*.bmp|All files|*.*" };
                 if (dlg.ShowDialog() == true)
                 {
                     _imagePath = dlg.FileName;

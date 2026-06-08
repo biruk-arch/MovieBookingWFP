@@ -3,7 +3,6 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using MovieBookingWPF.Models;
 
 namespace MovieBookingWPF
 {
@@ -127,28 +126,8 @@ namespace MovieBookingWPF
                 {
                     var booking = bookingWindow.CreatedBooking;
                     booking.Seat = _selectedSeat;
-
-                    try
-                    {
-                        using (var db = new AppDbContext())
-                        {
-                            db.Bookings.Add(new Booking
-                            {
-                                CustomerName = booking.CustomerName,
-                                MovieTitle = booking.MovieTitle,
-                                Showtime = booking.Showtime,
-                                Seat = booking.Seat
-                            });
-                            db.SaveChanges();
-                        }
-
-                        MessageBox.Show("Booking saved successfully to database!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-                        this.Close();
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Failed to save booking to database: {ex.Message}", "Database Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
+                    MovieStore.AddBooking(booking);
+                    this.Close();
                 }
             };
 

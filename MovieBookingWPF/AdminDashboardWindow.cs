@@ -14,7 +14,6 @@ namespace MovieBookingWPF
     public class AdminDashboardWindow : Window
     {
         private StackPanel _moviesListPanel;
-        private TextBox _searchBox;
         private List<MovieItem> _movies;
         private List<Booking> _bookings;
         private Border _moviesBadgeElement;
@@ -76,15 +75,6 @@ namespace MovieBookingWPF
             badges.Children.Add(_moviesBadgeElement);
             badges.Children.Add(_bookingsBadgeElement);
             leftStack.Children.Add(badges);
-
-            // Search box to quickly filter movies by title or genre
-            var searchRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
-            searchRow.Children.Add(new TextBlock { Text = "Search:", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0), FontWeight = FontWeights.SemiBold });
-            _searchBox = new TextBox { Width = 320, Margin = new Thickness(0, 0, 0, 0), Text = string.Empty };
-            _searchBox.TextChanged += (s, e) => { PopulateMoviesList(); };
-            _searchBox.GotFocus += (s, e) => { /* keep simple: focus ready for typing */ };
-            searchRow.Children.Add(_searchBox);
-            leftStack.Children.Add(searchRow);
 
             // Tabs
             var tabs = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
@@ -169,24 +159,9 @@ namespace MovieBookingWPF
         private void PopulateMoviesList()
         {
             _moviesListPanel.Children.Clear();
-
-            // Apply simple search filter (title or genre)
-            var items = _movies ?? new List<MovieItem>();
-            var queryText = _searchBox?.Text?.Trim();
-            if (!string.IsNullOrEmpty(queryText))
-            {
-                var q = queryText.ToLowerInvariant();
-                items = items.Where(x => (!string.IsNullOrEmpty(x.Title) && x.Title.ToLowerInvariant().Contains(q)) ||
-                                         (!string.IsNullOrEmpty(x.Genre) && x.Genre.ToLowerInvariant().Contains(q)))
-                             .ToList();
-            }
-
-            foreach (var m in items)
+            foreach (var m in _movies)
             {
                 var rowBorder = new Border { Background = new SolidColorBrush(Color.FromRgb(245, 247, 249)), CornerRadius = new CornerRadius(10), Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
-                var originalBg = rowBorder.Background;
-                rowBorder.MouseEnter += (s, e) => { rowBorder.Background = new SolidColorBrush(Color.FromRgb(238, 241, 244)); rowBorder.Cursor = System.Windows.Input.Cursors.Hand; };
-                rowBorder.MouseLeave += (s, e) => { rowBorder.Background = originalBg; rowBorder.Cursor = System.Windows.Input.Cursors.Arrow; };
                 var g = new Grid();
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -205,9 +180,7 @@ namespace MovieBookingWPF
 
                 var left = new StackPanel();
                 left.Children.Add(new TextBlock { Text = m.Title, FontWeight = FontWeights.Bold, FontSize = 16, Foreground = new SolidColorBrush(Color.FromRgb(15, 23, 32)) });
-                left.Children.Add(new TextBlock { Text = m.Genre, Foreground = new SolidColorBrush(Color.FromRgb(107, 114, 128)), Margin = new Thickness(0, 6, 0, 4) });
-                // show short meta: duration and price
-                left.Children.Add(new TextBlock { Text = $"{m.Duration} · ${m.Price:0.00}", Foreground = new SolidColorBrush(Color.FromRgb(107, 114, 128)), FontSize = 12, Margin = new Thickness(0, 0, 0, 8) });
+                left.Children.Add(new TextBlock { Text = m.Genre, Foreground = new SolidColorBrush(Color.FromRgb(107, 114, 128)), Margin = new Thickness(0, 6, 0, 8) });
                 leftComposite.Children.Add(left);
 
                 var timesPanel = new StackPanel { Orientation = Orientation.Horizontal };
@@ -226,16 +199,7 @@ namespace MovieBookingWPF
                 var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
                 var edit = CreatePillButton("Edit", Color.FromRgb(255, 255, 255), Brushes.Black, 84);
                 edit.Margin = new Thickness(0, 0, 8, 0);
-                edit.Click += (s, e) =>
-                {
-                    var dlg = new EditMovieWindow(m) { Owner = this };
-                    if (dlg.ShowDialog() == true)
-                    {
-                        LoadMoviesFromDatabase();
-                        PopulateMoviesList();
-                        UpdateBadges();
-                    }
-                };
+                edit.Click += (s, e) => MessageBox.Show($"Edit {m.Title}", "Edit", MessageBoxButton.OK, MessageBoxImage.Information);
                 actions.Children.Add(edit);
 
                 var showtimes = CreatePillButton("Showtimes", Color.FromRgb(255, 255, 255), Brushes.Black, 100);
